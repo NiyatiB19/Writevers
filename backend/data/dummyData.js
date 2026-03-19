@@ -4,7 +4,8 @@ export const categories = [
   { id: 3, name: "Travel", posts: 1560, color: "from-yellow-400 to-orange-500" },
   { id: 4, name: "Food", posts: 1420, color: "from-red-400 to-pink-500" },
   { id: 5, name: "Business", posts: 1230, color: "from-purple-400 to-indigo-500" },
-  { id: 6, name: "Health", posts: 980, color: "from-teal-400 to-emerald-500" }
+  { id: 6, name: "Health", posts: 980, color: "from-teal-400 to-emerald-500" },
+  { id: 7, name: "Fashion", posts: 840, color: "from-pink-400 to-rose-500" }
 ];
 
 export const posts = [

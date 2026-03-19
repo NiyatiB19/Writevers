@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 
 export default function Sidebar({ trending, writers }) {
   if (!trending && !writers) return null;
@@ -16,16 +17,17 @@ export default function Sidebar({ trending, writers }) {
 
       {/* Trending Section */}
       <div className="glass" style={{ padding: "24px", borderRadius: "20px" }}>
-        <h4 style={{ margin: "0 0 20px 0", fontSize: "1.1rem" }}>Trending Now 📈</h4>
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           {trending && trending.map((item, index) => (
             <div key={index} style={{ display: "flex", gap: "12px", alignItems: "baseline" }}>
               <span style={{ fontSize: "1.5rem", fontWeight: "800", color: "rgba(255,255,255,0.1)", lineHeight: 1 }}>0{index + 1}</span>
               <div>
-                <p style={{ margin: "0 0 4px 0", fontWeight: "500", fontSize: "0.95rem", cursor: "pointer", transition: "color 0.2s" }}
-                  onMouseOver={(e) => e.target.style.color = "#818cf8"}
-                  onMouseOut={(e) => e.target.style.color = "var(--text-main)"}
-                >{item.title}</p>
+                <Link to={`/read/${item._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                  <p style={{ margin: "0 0 4px 0", fontWeight: "500", fontSize: "0.95rem", cursor: "pointer", transition: "color 0.2s" }}
+                    onMouseOver={(e) => e.target.style.color = "#818cf8"}
+                    onMouseOut={(e) => e.target.style.color = "var(--text-main)"}
+                  >{item.title}</p>
+                </Link>
                 <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{item.views} reads</span>
               </div>
             </div>

@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
-export default function Login() {
+export default function Login({ theme, toggleTheme }) {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
@@ -17,7 +17,7 @@ export default function Login() {
         fetch("http://localhost:5001/api/home/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ email: email.trim(), password })
         })
             .then(res => {
                 if (!res.ok) throw new Error("Invalid credentials");
@@ -39,7 +39,7 @@ export default function Login() {
 
     return (
         <>
-            <Navbar />
+            <Navbar theme={theme} toggleTheme={toggleTheme} />
             <div style={{
                 minHeight: "100vh",
                 display: "flex",
@@ -68,9 +68,9 @@ export default function Login() {
                             style={{
                                 padding: "12px",
                                 borderRadius: "8px",
-                                border: "1px solid rgba(255,255,255,0.1)",
-                                background: "rgba(0,0,0,0.2)",
-                                color: "white",
+                                border: "var(--border-glass)",
+                                background: "var(--bg-glass)",
+                                color: "var(--text-main)",
                                 outline: "none"
                             }}
                         />
@@ -83,13 +83,16 @@ export default function Login() {
                             style={{
                                 padding: "12px",
                                 borderRadius: "8px",
-                                border: "1px solid rgba(255,255,255,0.1)",
-                                background: "rgba(0,0,0,0.2)",
-                                color: "white",
+                                border: "var(--border-glass)",
+                                background: "var(--bg-glass)",
+                                color: "var(--text-main)",
                                 outline: "none"
                             }}
                         />
                         <button type="submit" className="btn-primary" style={{ marginTop: "10px" }}>Login</button>
+                        <div style={{ textAlign: "right" }}>
+                            <Link to="/forgot-password" style={{ color: "var(--text-muted)", fontSize: "0.85rem", textDecoration: "none" }}>Forgot Password?</Link>
+                        </div>
                     </form>
                     <p style={{ marginTop: "20px", color: "var(--text-muted)", fontSize: "0.9rem" }}>
                         Don't have an account? <Link to="/signup" style={{ color: "var(--accent)", cursor: "pointer", textDecoration: "none" }}>Sign up</Link>

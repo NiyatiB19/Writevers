@@ -6,12 +6,25 @@ import Feed from "../components/Feed";
 import Sidebar from "../components/Sidebar";
 import Footer from "../components/Footer";
 
-export default function Home() {
+export default function Home({ theme, toggleTheme }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    fetch("http://localhost:5001/api/home")
+    const userStr = localStorage.getItem("user");
+    let url = "http://localhost:5001/api/home";
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        if (user._id) {
+          url += `?userId=${user._id}`;
+        }
+      } catch (e) {
+        console.error("Error parsing user", e);
+      }
+    }
+
+    fetch(url)
       .then(res => res.json())
       .then(data => setData(data))
       .catch(err => {
@@ -28,7 +41,7 @@ export default function Home() {
       justifyContent: "center",
       alignItems: "center",
       background: "var(--bg-dark)",
-      color: "white",
+      color: "var(--text-main)",
       textAlign: "center"
     }}>
       <h2 style={{ marginBottom: "20px" }}>⚠️ Offline</h2>
@@ -44,7 +57,7 @@ export default function Home() {
       justifyContent: "center",
       alignItems: "center",
       background: "var(--bg-dark)",
-      color: "white"
+      color: "var(--text-main)"
     }}>
       Loading experience...
     </div>
@@ -52,9 +65,18 @@ export default function Home() {
 
   return (
     <>
-      <Navbar />
+      <Navbar theme={theme} toggleTheme={toggleTheme} />
       <Hero />
       <Categories categories={data.categories} />
+
+      <div className="container" style={{ display: "flex", gap: "40px", marginBottom: "30px", alignItems: "center" }}>
+        <div style={{ flex: "1", minWidth: "0" }}>
+          <h3 style={{ fontSize: "1.5rem", margin: 0 }}>Latest Read</h3>
+        </div>
+        <div style={{ flex: "0 0 350px" }}>
+          <h4 style={{ fontSize: "1.5rem", margin: 0 }}>Trending Stories</h4>
+        </div>
+      </div>
 
       <div className="container" style={{
         display: "flex",

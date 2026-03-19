@@ -2,42 +2,290 @@ import React, { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import LanguageSelector from "../components/LanguageSelector";
 
-export default function BlogDetail() {
+const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5001";
+
+export default function BlogDetail({ theme, toggleTheme }) {
     const { id } = useParams();
     const [post, setPost] = useState(null);
     const [likes, setLikes] = useState(0);
+    const [translatedContent, setTranslatedContent] = useState(null);
+    const [selectedLang, setSelectedLang] = useState("en");
+    const [translating, setTranslating] = useState(false);
     const [comments, setComments] = useState([]);
     const [newComment, setNewComment] = useState("");
+
+    // Feature: Follow
+    const [isFollowing, setIsFollowing] = useState(false);
+    // Feature: Unique Likes
+    const [isLiked, setIsLiked] = useState(false);
+
+    // Feature: Replies
+    const [replyingTo, setReplyingTo] = useState(null);
+    const [replyText, setReplyText] = useState("");
+
+    const [speaking, setSpeaking] = useState(false);
+    const audioRef = React.useRef(null);
+    const voiceOptions = [
+        { label: "English (US)", value: "en-US" },
+        { label: "English (UK)", value: "en-GB" },
+        { label: "Hindi", value: "hi-IN" },
+        { label: "Gujarati", value: "gu-IN" },
+        { label: "French", value: "fr-FR" },
+        { label: "Spanish", value: "es-ES" },
+        { label: "Chinese", value: "zh-CN" }
+    ];
+    const [selectedVoiceURI, setSelectedVoiceURI] = useState("en-US");
     const navigate = useNavigate();
 
     useEffect(() => {
-        // Check auth
         if (!localStorage.getItem("token")) {
-            // Redirect logic handled by router usually or here
+            // Optional: redirect or just allow viewing
         }
 
-        fetch(`http://localhost:5001/api/home/posts/${id}`)
+        const userStr = localStorage.getItem("user");
+        const userId = userStr ? (() => { try { return JSON.parse(userStr)._id; } catch { return null; } })() : null;
+        const url = userId ? `${API_BASE}/api/home/posts/${id}?userId=${userId}` : `${API_BASE}/api/home/posts/${id}`;
+        fetch(url)
             .then(res => {
                 if (!res.ok) throw new Error("Post not found");
                 return res.json();
             })
             .then(data => {
                 setPost(data);
-                setLikes(data.likes || 0);
+                setLikes(data.likes ? (Array.isArray(data.likes) ? data.likes.length : data.likes) : 0);
+
+                // Check if current user liked
+                const userStr = localStorage.getItem("user");
+                if (userStr) {
+                    const u = JSON.parse(userStr);
+                    if (data.likes && Array.isArray(data.likes) && data.likes.includes(u._id)) {
+                        setIsLiked(true);
+                    }
+                    // Check if following author
+                    if (data.authorId && u.following && u.following.includes(data.authorId)) {
+                        setIsFollowing(true);
+                    }
+                }
+
                 setComments(data.commentsData || []);
+                setTranslatedContent(null);
+                setSelectedLang("en");
             })
             .catch(err => {
                 console.error(err);
             });
     }, [id, navigate]);
 
-    const handleLike = () => {
-        // Optimistic update
-        setLikes(prev => prev + 1);
+    const translateBlog = async (lang) => {
+        setSelectedLang(lang);
+        if (lang === "en") {
+            setTranslatedContent(null);
+            return;
+        }
+        if (!post) return;
+        setTranslating(true);
+        
+        let rawHtml = post.content || post.excerpt || "";
 
-        fetch(`http://localhost:5001/api/home/posts/${id}/like`, { method: "POST" })
-            .catch(err => console.error("Like failed", err));
+        // Extract images and replace with markers using regex to avoid DOM mangling issues
+        const imageMap = {};
+        let imgIndex = 0;
+        
+        // Regex to match any img tag, even with huge base64 src
+        const imgRegex = /<img[^>]*>/g;
+        
+        const textToTranslate = rawHtml.replace(imgRegex, (match) => {
+            const id = imgIndex++;
+            imageMap[id] = match;
+            return `<span data-img-id="${id}" translate="no"></span>`;
+        });
+
+        if (!textToTranslate.trim()) {
+            setTranslating(false);
+            return;
+        }
+        try {
+            const response = await fetch(`${API_BASE}/api/translate`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    text: textToTranslate,
+                    targetLang: lang
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) throw new Error(data.message || data.error || "Translation API returned an error");
+
+            // Re-insert images into translated content using regex
+            let finalHtml = data.translatedText;
+            
+            // Google Translate might capitalize attributes, so we use a flexible regex
+            const markerRegex = /<span[^>]*data-img-id=["']?(\d+)["']?[^>]*><\/span>/gi;
+            
+            finalHtml = finalHtml.replace(markerRegex, (match, idStr) => {
+                const id = parseInt(idStr, 10);
+                return imageMap[id] ? imageMap[id] : match;
+            });
+            
+            setTranslatedContent(finalHtml);
+
+        } catch (error) {
+            console.error("Translation error:", error);
+            alert("Translation failed");
+        }
+        setTranslating(false);
+    };
+
+    const handleFollow = () => {
+        const userStr = localStorage.getItem("user");
+        if (!userStr) return navigate("/login");
+        const user = JSON.parse(userStr);
+        if (!post.authorId) return;
+
+        const wasFollowing = isFollowing;
+        setIsFollowing(!wasFollowing);
+
+        fetch(`${API_BASE}/api/home/follow`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ currentUserId: user._id, targetUserId: post.authorId })
+        })
+            .then(res => res.json())
+            .then(data => {
+                // Update local storage user following list
+                const updatedUser = { ...user, following: data.following };
+                localStorage.setItem("user", JSON.stringify(updatedUser));
+                setIsFollowing(data.following.includes(post.authorId));
+            })
+            .catch(err => {
+                console.error("Follow failed", err);
+                setIsFollowing(wasFollowing);
+            });
+    };
+
+    const handleShare = () => {
+        navigator.clipboard.writeText(window.location.href);
+        alert("Link copied to clipboard!");
+    };
+
+    const handleReport = () => {
+        const userStr = localStorage.getItem("user");
+        if (!userStr) return navigate("/login");
+        const user = JSON.parse(userStr);
+
+        const reason = prompt("Why are you reporting this post?");
+        if (!reason) return;
+
+        fetch(`${API_BASE}/api/home/posts/${id}/report`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: user._id, reason })
+        })
+            .then(res => {
+                if (res.ok) alert("Post reported to admin.");
+                else alert("Failed to report.");
+            })
+            .catch(err => console.error(err));
+    };
+
+    const handleLike = () => {
+        const userStr = localStorage.getItem("user");
+        if (!userStr) return navigate("/login");
+        const user = JSON.parse(userStr);
+
+        // Optimistic
+        const wasLiked = isLiked;
+        setIsLiked(!wasLiked);
+        setLikes(prev => wasLiked ? prev - 1 : prev + 1);
+
+        fetch(`${API_BASE}/api/home/posts/${id}/like`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: user._id })
+        })
+            .then(res => res.json())
+            .then(data => {
+                setLikes(data.likes);
+                setIsLiked(data.isLiked);
+            })
+            .catch(err => {
+                console.error("Like failed", err);
+                setIsLiked(wasLiked); // Revert
+                setLikes(prev => wasLiked ? prev + 1 : prev - 1);
+            });
+    };
+
+    const startStopSpeech = async () => {
+        if (!post) return;
+
+        if (speaking) {
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current.currentTime = 0;
+            }
+            setSpeaking(false);
+            return;
+        }
+
+        let textToRead = "";
+        if (translatedContent) {
+            const div = document.createElement("div");
+            div.innerHTML = translatedContent;
+            textToRead = div.textContent || div.innerText || "";
+        } else {
+            const div = document.createElement("div");
+            div.innerHTML = post.content || post.excerpt || post.title || '';
+            textToRead = div.textContent || div.innerText || "";
+        }
+
+        if (!textToRead.trim()) return;
+
+        // Truncate text if it's monstrously huge, gtts has limits (though usually fine up to 5000 chars)
+        if (textToRead.length > 5000) {
+            textToRead = textToRead.substring(0, 5000);
+        }
+
+        setSpeaking(true);
+        try {
+            const response = await fetch(`${API_BASE}/api/tts`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    text: textToRead,
+                    lang: selectedVoiceURI
+                })
+            });
+
+            if (!response.ok) throw new Error("TTS failed");
+
+            const blob = await response.blob();
+            const audioUrl = URL.createObjectURL(blob);
+            const audio = new Audio(audioUrl);
+            audioRef.current = audio;
+
+            audio.onended = () => {
+                setSpeaking(false);
+                URL.revokeObjectURL(audioUrl);
+            };
+            audio.onerror = () => {
+                setSpeaking(false);
+                URL.revokeObjectURL(audioUrl);
+            };
+
+            audio.play();
+        } catch (error) {
+            console.error("TTS Error:", error);
+            alert("TTS could not be loaded. Check backend server.");
+            setSpeaking(false);
+        }
     };
 
     const handleCommentSubmit = (e) => {
@@ -52,29 +300,59 @@ export default function BlogDetail() {
         };
 
         // Optimistic UI
-        const tempComment = { ...commentPayload, id: Date.now(), date: "Just now" };
+        const tempComment = { ...commentPayload, _id: Date.now().toString(), replies: [], date: new Date() }; // Add replies array
         setComments([...comments, tempComment]);
         setNewComment("");
 
-        fetch(`http://localhost:5001/api/home/posts/${id}/comments`, {
+        fetch(`${API_BASE}/api/home/posts/${id}/comments`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(commentPayload)
         })
             .then(res => res.json())
             .then(savedComment => {
-                // Replace temp with real if needed, or just re-fetch. 
-                // For now, keeping optimistic is fine.
+                // Could replace temp comment
             })
             .catch(err => console.error("Comment failed", err));
     };
 
+    const handleReplySubmit = (e, commentId) => {
+        e.preventDefault();
+        const userStr = localStorage.getItem("user");
+        if (!userStr) return navigate("/login");
+        const user = JSON.parse(userStr);
 
-    if (!post) return <div style={{ minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", background: "var(--bg-dark)", color: "white" }}>Loading...</div>;
+        const replyPayload = {
+            user: { name: user.name, avatar: user.avatar },
+            text: replyText
+        };
+
+        fetch(`${API_BASE}/api/home/posts/${id}/comments/${commentId}/reply`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(replyPayload)
+        })
+            .then(res => res.json())
+            .then(newReply => {
+                const updatedComments = comments.map(c => {
+                    if (c._id === commentId) {
+                        return { ...c, replies: [...(c.replies || []), newReply] };
+                    }
+                    return c;
+                });
+                setComments(updatedComments);
+                setReplyingTo(null);
+                setReplyText("");
+            })
+            .catch(err => console.error("Reply failed", err));
+    };
+
+
+    if (!post) return <div style={{ minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", background: "var(--bg-dark)", color: "var(--text-main)" }}>Loading...</div>;
 
     return (
         <>
-            <Navbar />
+            <Navbar theme={theme} toggleTheme={toggleTheme} />
 
             <article style={{ paddingTop: "100px", minHeight: "100vh", paddingBottom: "80px" }}>
                 {/* Header Image */}
@@ -94,25 +372,57 @@ export default function BlogDetail() {
                     </div>
                 </div>
 
-                <div className="container" style={{ maxWidth: "800px", marginTop: "40px" }}>
+                <div className="container" style={{ maxWidth: "1100px", marginTop: "40px" }}>
 
                     {/* Author & Meta */}
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "40px", borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: "20px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
                             <img src={post.authorAvatar} alt={post.author} style={{ width: "50px", height: "50px", borderRadius: "50%" }} />
                             <div>
-                                <h4 style={{ margin: 0, fontSize: "1.1rem" }}>{post.author}</h4>
-                                <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.9rem" }}>{post.createdAt} · {post.readTime}</p>
+                                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                    <h4 style={{ margin: 0, fontSize: "1.1rem" }}>{post.author}</h4>
+                                    {/* Follow Button */}
+                                    {(!localStorage.getItem("user") || JSON.parse(localStorage.getItem("user"))._id !== post.authorId) && (
+                                        <button
+                                            onClick={handleFollow}
+                                            style={{
+                                                background: isFollowing ? "transparent" : "var(--accent)",
+                                                border: isFollowing ? `1px solid var(--border-glass)` : "none",
+                                                color: "var(--text-main)",
+                                                padding: "4px 12px",
+                                                borderRadius: "20px",
+                                                fontSize: "0.75rem",
+                                                cursor: "pointer",
+                                                fontWeight: "600"
+                                            }}
+                                        >
+                                            {isFollowing ? "Following" : "Follow"}
+                                        </button>
+                                    )}
+                                </div>
+                                <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.9rem" }}>{new Date(post.createdAt).toLocaleDateString()} · {post.readTime}</p>
                             </div>
                         </div>
 
-                        <div style={{ display: "flex", gap: "10px" }}>
+                        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                            {/* Share Button */}
+                            <button onClick={handleShare} style={{ background: "var(--bg-glass)", border: "var(--border-glass)", color: "var(--text-main)", padding: "8px 16px", borderRadius: "20px", cursor: "pointer", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "6px" }}>
+                                🔗 Share
+                            </button>
+
+                            {/* Report Button (User Only) */}
+                            {localStorage.getItem("user") && JSON.parse(localStorage.getItem("user")).email !== post.authorEmail && (
+                                <button onClick={handleReport} style={{ background: "var(--bg-glass)", border: "var(--border-glass)", color: "var(--text-muted)", padding: "8px 16px", borderRadius: "20px", cursor: "pointer", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "6px" }}>
+                                    ⚠️ Report
+                                </button>
+                            )}
+
                             {/* Delete Button (Only for Author) */}
                             {localStorage.getItem("user") && JSON.parse(localStorage.getItem("user")).email === post.authorEmail && (
                                 <button
                                     onClick={() => {
                                         if (window.confirm("Are you sure you want to delete this post?")) {
-                                            fetch(`http://localhost:5001/api/home/posts/${post.id}`, { method: "DELETE" })
+                                            fetch(`${API_BASE}/api/home/posts/${post._id}`, { method: "DELETE" })
                                                 .then(res => {
                                                     if (res.ok) {
                                                         alert("Post deleted successfully");
@@ -134,20 +444,69 @@ export default function BlogDetail() {
                                 </button>
                             )}
 
+                            {/* Listen Section */}
+                            <div style={{ display: "flex", gap: "10px", alignItems: "center", background: "var(--bg-glass)", border: "var(--border-glass)", padding: "4px 12px 4px 4px", borderRadius: "30px" }}>
+                                <button onClick={startStopSpeech} style={{
+                                    background: speaking ? "rgba(34,197,94,0.2)" : "transparent",
+                                    border: "none",
+                                    color: speaking ? "#4ade80" : "var(--text-main)",
+                                    padding: "8px 16px", borderRadius: "20px", cursor: "pointer",
+                                    display: "flex", alignItems: "center", gap: "6px", fontWeight: "600", fontSize: "0.9rem", transition: "all 0.2s ease"
+                                }}>
+                                    <span>{speaking ? '🔊' : '🔈'}</span> {speaking ? 'Stop' : 'Listen'}
+                                </button>
+
+                                <div style={{ width: "1px", height: "20px", background: "var(--border-glass)" }}></div>
+
+                                <select
+                                    value={selectedVoiceURI}
+                                    onChange={(e) => setSelectedVoiceURI(e.target.value)}
+                                    style={{
+                                        background: "transparent",
+                                        color: "var(--text-muted)",
+                                        border: "none",
+                                        padding: "4px",
+                                        borderRadius: "4px",
+                                        fontSize: "0.80rem",
+                                        outline: "none",
+                                        cursor: "pointer",
+                                        maxWidth: "120px"
+                                    }}
+                                >
+                                    {voiceOptions.map(v => (
+                                        <option key={v.value} value={v.value} style={{ color: "black" }}>
+                                            {v.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
                             {/* Like Button */}
                             <button onClick={handleLike} style={{
-                                background: "rgba(236, 72, 153, 0.1)", border: "1px solid rgba(236, 72, 153, 0.2)",
-                                color: "#ec4899", padding: "10px 20px", borderRadius: "30px", cursor: "pointer",
-                                display: "flex", alignItems: "center", gap: "8px", fontWeight: "600", transition: "all 0.2s ease"
+                                background: isLiked ? "rgba(236, 72, 153, 0.2)" : "var(--bg-glass)",
+                                border: `1px solid ${isLiked ? "rgba(236, 72, 153, 0.5)" : "var(--border-glass)"}`,
+                                color: isLiked ? "#ec4899" : "var(--text-main)", padding: "8px 16px", borderRadius: "20px", cursor: "pointer",
+                                display: "flex", alignItems: "center", gap: "6px", fontSize: "0.9rem", transition: "all 0.2s ease"
                             }}>
-                                <span>❤️</span> {likes} Likes
+                                <span>{isLiked ? '❤️' : '🤍'}</span> {likes} {likes === 1 ? 'Like' : 'Likes'}
                             </button>
                         </div>
                     </div>
 
                     {/* Content */}
-                    <div style={{ lineHeight: "1.8", fontSize: "1.1rem", color: "#e2e8f0", whiteSpace: "pre-line" }}>
-                        {post.content || post.excerpt || "No content available for this post."}
+                    <div className="blog-content" style={{ lineHeight: "1.8", fontSize: "1.2rem", color: "var(--text-main)" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
+                            <span style={{ color: "var(--text-muted)", fontSize: "0.95rem" }}>Translate:</span>
+                            <LanguageSelector value={selectedLang} onLanguageChange={translateBlog} />
+                            {translating && <span style={{ color: "var(--accent)", fontSize: "0.85rem" }}>Translating...</span>}
+                        </div>
+                        {translatedContent !== null ? (
+                            <div className="translated-html" dangerouslySetInnerHTML={{ __html: translatedContent }} />
+                        ) : (post.content && post.content.includes("<")) ? (
+                            <div dangerouslySetInnerHTML={{ __html: post.content }} />
+                        ) : (
+                            <div style={{ whiteSpace: "pre-line" }}>{post.content || post.excerpt}</div>
+                        )}
                     </div>
 
                     {/* Comments Section */}
@@ -162,7 +521,7 @@ export default function BlogDetail() {
                                 onChange={(e) => setNewComment(e.target.value)}
                                 placeholder="What are your thoughts?"
                                 style={{
-                                    width: "100%", background: "transparent", border: "none", color: "white",
+                                    width: "100%", background: "transparent", border: "none", color: "var(--text-main)",
                                     fontSize: "1rem", outline: "none", minHeight: "80px", resize: "none"
                                 }}
                             />
@@ -173,15 +532,55 @@ export default function BlogDetail() {
 
                         {/* Comment List */}
                         <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-                            {comments.map((comment, idx) => (
-                                <div key={idx} style={{ display: "flex", gap: "16px" }}>
-                                    <img src={comment.user.avatar} alt={comment.user.name} style={{ width: "40px", height: "40px", borderRadius: "50%", objectFit: "cover" }} />
-                                    <div>
+                            {comments.map((comment) => (
+                                <div key={comment._id || Math.random()} style={{ display: "flex", gap: "16px" }}>
+                                    <img src={comment.user?.avatar || "https://via.placeholder.com/40"} alt={comment.user?.name || "User"} style={{ width: "40px", height: "40px", borderRadius: "50%", objectFit: "cover" }} />
+                                    <div style={{ width: "100%" }}>
                                         <div style={{ display: "flex", alignItems: "baseline", gap: "10px", marginBottom: "4px" }}>
-                                            <h5 style={{ margin: 0, fontSize: "1rem" }}>{comment.user.name}</h5>
-                                            <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{comment.date}</span>
+                                            <h5 style={{ margin: 0, fontSize: "1rem" }}>{comment.user?.name || "Anonymous"}</h5>
+                                            <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                                                {comment.date ? new Date(comment.date).toLocaleDateString() : ""}
+                                            </span>
                                         </div>
-                                        <p style={{ margin: 0, color: "var(--text-main)", lineHeight: "1.5" }}>{comment.text}</p>
+                                        <p style={{ margin: "0 0 8px 0", color: "var(--text-main)", lineHeight: "1.5" }}>{comment.text}</p>
+
+                                        {/* Reply Button */}
+                                        <button
+                                            onClick={() => setReplyingTo(replyingTo === comment._id ? null : comment._id)}
+                                            style={{ background: "transparent", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: "0.85rem", padding: 0 }}
+                                        >
+                                            Reply
+                                        </button>
+
+                                        {/* Reply Form */}
+                                        {replyingTo === comment._id && (
+                                            <form onSubmit={(e) => handleReplySubmit(e, comment._id)} style={{ marginTop: "10px", display: "flex", gap: "10px" }}>
+                                                <input
+                                                    value={replyText}
+                                                    onChange={e => setReplyText(e.target.value)}
+                                                    placeholder="Write a reply..."
+                                                    style={{ flex: 1, padding: "8px", borderRadius: "8px", background: "var(--bg-glass)", border: "none", color: "var(--text-main)" }}
+                                                />
+                                                <button type="submit" className="btn-primary" style={{ padding: "8px 16px", fontSize: "0.8rem" }}>Send</button>
+                                            </form>
+                                        )}
+
+                                        {/* Replies List */}
+                                        {comment.replies && comment.replies.length > 0 && (
+                                            <div style={{ marginTop: "16px", paddingLeft: "20px", borderLeft: "2px solid rgba(255,255,255,0.1)" }}>
+                                                {comment.replies.map((reply, rIdx) => (
+                                                    <div key={rIdx} style={{ marginBottom: "12px" }}>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                                                            <strong style={{ fontSize: "0.9rem" }}>{reply.user?.name || "Anonymous"}</strong>
+                                                            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                                                                {reply.date ? new Date(reply.date).toLocaleDateString() : ""}
+                                                            </span>
+                                                        </div>
+                                                        <p style={{ margin: 0, fontSize: "0.95rem", color: "var(--text-muted)" }}>{reply.text}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             ))}

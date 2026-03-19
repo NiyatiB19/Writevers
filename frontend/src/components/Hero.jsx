@@ -55,9 +55,9 @@ export default function Hero() {
       <div style={{ display: "flex", gap: "16px" }}>
         <button className="btn-primary" onClick={() => navigate("/explore")}>Start Reading</button>
         <button style={{
-          background: "rgba(255, 255, 255, 0.05)",
-          border: "1px solid rgba(255, 255, 255, 0.1)",
-          color: "white",
+          background: "var(--bg-glass)",
+          border: "var(--border-glass)",
+          color: "var(--text-main)",
           padding: "10px 24px",
           borderRadius: "9999px",
           fontWeight: "600",

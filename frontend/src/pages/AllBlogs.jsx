@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
-export default function AllBlogs() {
+export default function AllBlogs({ theme, toggleTheme }) {
     const [posts, setPosts] = useState([]);
     const [searchParams] = useSearchParams();
     const categoryFilter = searchParams.get("category");
@@ -35,7 +35,7 @@ export default function AllBlogs() {
 
     return (
         <>
-            <Navbar />
+            <Navbar theme={theme} toggleTheme={toggleTheme} />
             <div className="container" style={{ paddingTop: "120px", paddingBottom: "60px", minHeight: "100vh" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "40px" }}>
                     <h2 style={{ fontSize: "2.5rem" }}>
@@ -64,7 +64,7 @@ export default function AllBlogs() {
                         gap: "30px"
                     }}>
                         {posts.map(post => (
-                            <div key={post.id} className="glass" style={{
+                            <div key={post._id} className="glass" style={{
                                 borderRadius: "16px",
                                 overflow: "hidden",
                                 display: "flex",
@@ -74,18 +74,22 @@ export default function AllBlogs() {
                                 onMouseOver={(e) => e.currentTarget.style.transform = "translateY(-5px)"}
                                 onMouseOut={(e) => e.currentTarget.style.transform = "translateY(0)"}
                             >
-                                <div style={{
-                                    height: "200px",
-                                    backgroundImage: `url(${post.image})`,
-                                    backgroundSize: "cover",
-                                    backgroundPosition: "center"
-                                }} />
+                                <img
+                                    src={post.image || "https://images.unsplash.com/photo-1499750310159-5b5f87ae97e1?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"}
+                                    onError={(e) => { e.target.onerror = null; e.target.src = "https://images.unsplash.com/photo-1499750310159-5b5f87ae97e1?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" }}
+                                    alt={post.title}
+                                    style={{
+                                        height: "200px",
+                                        width: "100%",
+                                        objectFit: "cover"
+                                    }}
+                                />
                                 <div style={{ padding: "20px", display: "flex", flexDirection: "column", flex: 1 }}>
                                     <span style={{ fontSize: "0.8rem", color: "var(--accent)", fontWeight: "600", marginBottom: "8px" }}>{post.category}</span>
                                     <h3 style={{ margin: "0 0 10px 0", fontSize: "1.2rem", lineHeight: "1.3" }}>{post.title}</h3>
                                     <p style={{ fontSize: "0.9rem", color: "var(--text-muted)", flex: 1 }}>{post.excerpt}</p>
 
-                                    <Link to={`/read/${post.id}`} className="btn-primary" style={{
+                                    <Link to={`/read/${post._id}`} className="btn-primary" style={{
                                         textDecoration: "none",
                                         display: "inline-block",
                                         textAlign: "center",

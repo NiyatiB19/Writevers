@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import LanguageSelector from "../components/LanguageSelector";
+import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
+import { languageOptions } from '../utils/languageOptions';
 
 const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5001";
 
@@ -25,19 +27,10 @@ export default function BlogDetail({ theme, toggleTheme }) {
     const [replyingTo, setReplyingTo] = useState(null);
     const [replyText, setReplyText] = useState("");
 
-    const [speaking, setSpeaking] = useState(false);
-    const audioRef = React.useRef(null);
-    const voiceOptions = [
-        { label: "English (US)", value: "en-US" },
-        { label: "English (UK)", value: "en-GB" },
-        { label: "Hindi", value: "hi-IN" },
-        { label: "Gujarati", value: "gu-IN" },
-        { label: "French", value: "fr-FR" },
-        { label: "Spanish", value: "es-ES" },
-        { label: "Chinese", value: "zh-CN" }
-    ];
-    const [selectedVoiceURI, setSelectedVoiceURI] = useState("en-US");
+    const [speechLang, setSpeechLang] = useState("en-US");
+    const { speak, pause, resume, stop, isSpeaking, isPaused, hasVoiceForLanguage } = useSpeechSynthesis();
     const navigate = useNavigate();
+    const audioRef = React.useRef(null);
 
     useEffect(() => {
         if (!localStorage.getItem("token")) {
@@ -80,6 +73,15 @@ export default function BlogDetail({ theme, toggleTheme }) {
 
     const translateBlog = async (lang) => {
         setSelectedLang(lang);
+        
+        // Stop any ongoing speech
+        stop();
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+            audioRef.current = null;
+        }
+        
         if (lang === "en") {
             setTranslatedContent(null);
             return;
@@ -87,22 +89,9 @@ export default function BlogDetail({ theme, toggleTheme }) {
         if (!post) return;
         setTranslating(true);
         
-        let rawHtml = post.content || post.excerpt || "";
+        const rawHtml = post.content || post.excerpt || "";
 
-        // Extract images and replace with markers using regex to avoid DOM mangling issues
-        const imageMap = {};
-        let imgIndex = 0;
-        
-        // Regex to match any img tag, even with huge base64 src
-        const imgRegex = /<img[^>]*>/g;
-        
-        const textToTranslate = rawHtml.replace(imgRegex, (match) => {
-            const id = imgIndex++;
-            imageMap[id] = match;
-            return `<span data-img-id="${id}" translate="no"></span>`;
-        });
-
-        if (!textToTranslate.trim()) {
+        if (!rawHtml.trim()) {
             setTranslating(false);
             return;
         }
@@ -113,7 +102,7 @@ export default function BlogDetail({ theme, toggleTheme }) {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    text: textToTranslate,
+                    text: rawHtml,
                     targetLang: lang
                 })
             });
@@ -122,18 +111,7 @@ export default function BlogDetail({ theme, toggleTheme }) {
 
             if (!response.ok) throw new Error(data.message || data.error || "Translation API returned an error");
 
-            // Re-insert images into translated content using regex
-            let finalHtml = data.translatedText;
-            
-            // Google Translate might capitalize attributes, so we use a flexible regex
-            const markerRegex = /<span[^>]*data-img-id=["']?(\d+)["']?[^>]*><\/span>/gi;
-            
-            finalHtml = finalHtml.replace(markerRegex, (match, idStr) => {
-                const id = parseInt(idStr, 10);
-                return imageMap[id] ? imageMap[id] : match;
-            });
-            
-            setTranslatedContent(finalHtml);
+            setTranslatedContent(data.translated);
 
         } catch (error) {
             console.error("Translation error:", error);
@@ -224,15 +202,21 @@ export default function BlogDetail({ theme, toggleTheme }) {
     const startStopSpeech = async () => {
         if (!post) return;
 
-        if (speaking) {
-            if (audioRef.current) {
-                audioRef.current.pause();
-                audioRef.current.currentTime = 0;
+        if (isSpeaking) {
+            if (isPaused) {
+                resume();
+            } else {
+                stop();
+                if (audioRef.current) {
+                    audioRef.current.pause();
+                    audioRef.current.currentTime = 0;
+                    audioRef.current = null;
+                }
             }
-            setSpeaking(false);
             return;
         }
 
+        // Start speaking
         let textToRead = "";
         if (translatedContent) {
             const div = document.createElement("div");
@@ -246,45 +230,60 @@ export default function BlogDetail({ theme, toggleTheme }) {
 
         if (!textToRead.trim()) return;
 
-        // Truncate text if it's monstrously huge, gtts has limits (though usually fine up to 5000 chars)
+        // Truncate text if it's monstrously huge
         if (textToRead.length > 5000) {
             textToRead = textToRead.substring(0, 5000);
         }
 
-        setSpeaking(true);
+        // Trim and sanitize
+        textToRead = textToRead.trim();
+
+        console.log(`Starting speech for language: ${speechLang}`);
+        console.log(`Text to speak: ${textToRead.substring(0, 100)}...`);
+
         try {
-            const response = await fetch(`${API_BASE}/api/tts`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    text: textToRead,
-                    lang: selectedVoiceURI
-                })
-            });
-
-            if (!response.ok) throw new Error("TTS failed");
-
-            const blob = await response.blob();
-            const audioUrl = URL.createObjectURL(blob);
-            const audio = new Audio(audioUrl);
-            audioRef.current = audio;
-
-            audio.onended = () => {
-                setSpeaking(false);
-                URL.revokeObjectURL(audioUrl);
-            };
-            audio.onerror = () => {
-                setSpeaking(false);
-                URL.revokeObjectURL(audioUrl);
-            };
-
-            audio.play();
+            await speak(textToRead, speechLang);
         } catch (error) {
-            console.error("TTS Error:", error);
-            alert("TTS could not be loaded. Check backend server.");
-            setSpeaking(false);
+            console.warn("Browser speech failed, using backend TTS:", error);
+            // Fallback to backend TTS
+            try {
+                if (audioRef.current) {
+                    audioRef.current.pause();
+                    audioRef.current.currentTime = 0;
+                }
+
+                const response = await fetch(`${API_BASE}/api/tts`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        text: textToRead,
+                        lang: speechLang
+                    })
+                });
+
+                if (!response.ok) throw new Error("TTS failed");
+
+                const blob = await response.blob();
+                const audioUrl = URL.createObjectURL(blob);
+                const audio = new Audio(audioUrl);
+                audioRef.current = audio;
+
+                audio.onended = () => {
+                    URL.revokeObjectURL(audioUrl);
+                    audioRef.current = null;
+                };
+                audio.onerror = () => {
+                    URL.revokeObjectURL(audioUrl);
+                    audioRef.current = null;
+                };
+
+                await audio.play();
+            } catch (backendError) {
+                console.error("Backend TTS Error:", backendError);
+                alert("TTS could not be loaded. Check backend server.");
+            }
         }
     };
 
@@ -447,20 +446,20 @@ export default function BlogDetail({ theme, toggleTheme }) {
                             {/* Listen Section */}
                             <div style={{ display: "flex", gap: "10px", alignItems: "center", background: "var(--bg-glass)", border: "var(--border-glass)", padding: "4px 12px 4px 4px", borderRadius: "30px" }}>
                                 <button onClick={startStopSpeech} style={{
-                                    background: speaking ? "rgba(34,197,94,0.2)" : "transparent",
+                                    background: isSpeaking ? "rgba(34,197,94,0.2)" : "transparent",
                                     border: "none",
-                                    color: speaking ? "#4ade80" : "var(--text-main)",
+                                    color: isSpeaking ? "#4ade80" : "var(--text-main)",
                                     padding: "8px 16px", borderRadius: "20px", cursor: "pointer",
                                     display: "flex", alignItems: "center", gap: "6px", fontWeight: "600", fontSize: "0.9rem", transition: "all 0.2s ease"
                                 }}>
-                                    <span>{speaking ? '🔊' : '🔈'}</span> {speaking ? 'Stop' : 'Listen'}
+                                    <span>{isSpeaking ? '🔊' : '🔈'}</span> {isSpeaking ? (isPaused ? 'Resume' : 'Stop') : 'Listen'}
                                 </button>
 
                                 <div style={{ width: "1px", height: "20px", background: "var(--border-glass)" }}></div>
 
                                 <select
-                                    value={selectedVoiceURI}
-                                    onChange={(e) => setSelectedVoiceURI(e.target.value)}
+                                    value={speechLang}
+                                    onChange={(e) => setSpeechLang(e.target.value)}
                                     style={{
                                         background: "transparent",
                                         color: "var(--text-muted)",
@@ -473,9 +472,9 @@ export default function BlogDetail({ theme, toggleTheme }) {
                                         maxWidth: "120px"
                                     }}
                                 >
-                                    {voiceOptions.map(v => (
-                                        <option key={v.value} value={v.value} style={{ color: "black" }}>
-                                            {v.label}
+                                    {languageOptions.map(option => (
+                                        <option key={option.code} value={option.code} style={{ color: "black" }}>
+                                            {option.label}
                                         </option>
                                     ))}
                                 </select>

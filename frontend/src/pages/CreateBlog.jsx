@@ -18,6 +18,9 @@ export default function CreateBlog({ theme, toggleTheme }) {
     const [recognizing, setRecognizing] = useState(false);
     const recognitionRef = useRef(null);
 
+    const [isStyleDropdownOpen, setIsStyleDropdownOpen] = useState(false);
+    const [currentStyle, setCurrentStyle] = useState("Normal");
+
     const categories = ["Technology", "Business", "Food", "Travel", "Lifestyle", "Health", "Fashion"];
     const navigate = useNavigate();
     const { id } = useParams();
@@ -91,8 +94,50 @@ export default function CreateBlog({ theme, toggleTheme }) {
         }
     }, [navigate, id, isEditing]);
 
+    const wrapEditorImage = (img) => {
+        if (!img || img.closest('.editor-image-wrapper')) return;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'editor-image-wrapper';
+        wrapper.contentEditable = 'false';
+        wrapper.style.position = 'relative';
+        wrapper.style.display = 'block';
+        wrapper.style.marginBottom = '20px';
+
+        img.style.maxWidth = '100%';
+        img.style.height = 'auto';
+        img.style.display = 'block';
+        img.style.width = '100%';
+        img.style.objectFit = 'contain';
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'editor-image-delete';
+        deleteBtn.innerHTML = '🗑';
+
+        img.parentNode.insertBefore(wrapper, img);
+        wrapper.appendChild(img);
+        wrapper.appendChild(deleteBtn);
+    };
+
+    const normalizeEditorImages = () => {
+        if (!editorRef.current) return;
+
+        const existingImgs = Array.from(editorRef.current.querySelectorAll('img'));
+        existingImgs.forEach(img => {
+            wrapEditorImage(img);
+        });
+    };
+
+    const removeImageWrapper = (wrapper) => {
+        if (!wrapper) return;
+        wrapper.remove();
+        saveDraft();
+    };
+
     const saveDraft = () => {
         if (isEditing) return;
+        normalizeEditorImages();
         const content = editorRef.current ? editorRef.current.innerHTML : "";
         const toSave = { ...formData, content };
         localStorage.setItem('createBlogDraft', JSON.stringify(toSave));
@@ -154,7 +199,79 @@ export default function CreateBlog({ theme, toggleTheme }) {
     const handleToolbar = (command, value = null) => {
         document.execCommand(command, false, value);
         editorRef.current.focus();
+
+        // Ensure style label stays accurate after change
+        updateCurrentTextStyle();
     };
+
+    const updateCurrentTextStyle = () => {
+        if (!editorRef.current) return;
+        let block = document.queryCommandValue("formatBlock");
+        if (!block) {
+            setCurrentStyle("Normal");
+            return;
+        }
+
+        block = block.toString().toUpperCase();
+        if (block.startsWith("H1")) setCurrentStyle("H1");
+        else if (block.startsWith("H2")) setCurrentStyle("H2");
+        else if (block.startsWith("H3")) setCurrentStyle("H3");
+        else setCurrentStyle("Normal");
+    };
+
+    const applyTextStyle = (styleKey) => {
+        if (styleKey === "Normal") {
+            handleToolbar("formatBlock", "P");
+        } else {
+            handleToolbar("formatBlock", styleKey);
+        }
+        setCurrentStyle(styleKey);
+        setIsStyleDropdownOpen(false);
+    };
+
+    useEffect(() => {
+        const onSelectionChange = () => {
+            const active = document.activeElement === editorRef.current;
+            if (active) updateCurrentTextStyle();
+        };
+
+        const onEditorClick = (e) => {
+            const deleteBtn = e.target.closest('.editor-image-delete');
+            if (deleteBtn) {
+                e.preventDefault();
+                const wrapper = deleteBtn.closest('.editor-image-wrapper');
+                if (wrapper) removeImageWrapper(wrapper);
+            }
+            // if click inside editor, update the style label
+            if (editorRef.current && editorRef.current.contains(e.target)) {
+                updateCurrentTextStyle();
+            }
+        };
+
+        document.addEventListener("selectionchange", onSelectionChange);
+        document.addEventListener("click", onEditorClick);
+        editorRef.current?.addEventListener("focus", updateCurrentTextStyle);
+
+        // Normalize existing image nodes on mount
+        normalizeEditorImages();
+
+        return () => {
+            document.removeEventListener("selectionchange", onSelectionChange);
+            document.removeEventListener("click", onEditorClick);
+            editorRef.current?.removeEventListener("focus", updateCurrentTextStyle);
+        };
+    }, []);
+
+    useEffect(() => {
+        const onClickOutside = (event) => {
+            if (!editorRef.current) return;
+            const toolbarWrapper = event.target.closest("[data-toolbar-style]");
+            if (!toolbarWrapper) setIsStyleDropdownOpen(false);
+        };
+
+        document.addEventListener("click", onClickOutside);
+        return () => document.removeEventListener("click", onClickOutside);
+    }, []);
 
     const handleCoverImageChange = (e) => {
         const file = e.target.files[0];
@@ -168,15 +285,58 @@ export default function CreateBlog({ theme, toggleTheme }) {
         }
     };
 
+    const insertImageAtCursor = (src) => {
+        if (!editorRef.current) return;
+
+        const selection = window.getSelection();
+        if (!selection) return;
+
+        const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+        if (!range) return;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'editor-image-wrapper';
+        wrapper.contentEditable = 'false';
+        wrapper.style.position = 'relative';
+        wrapper.style.display = 'block';
+        wrapper.style.marginBottom = '20px';
+
+        const img = document.createElement('img');
+        img.src = src;
+        img.className = 'editor-image';
+        img.style.maxWidth = '100%';
+        img.style.height = 'auto';
+        img.style.display = 'block';
+        img.style.width = '100%';
+        img.style.objectFit = 'contain';
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'editor-image-delete';
+        deleteBtn.innerHTML = '🗑';
+
+        wrapper.appendChild(img);
+        wrapper.appendChild(deleteBtn);
+
+        range.deleteContents();
+        range.insertNode(wrapper);
+
+        const newRange = document.createRange();
+        newRange.setStartAfter(wrapper);
+        newRange.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(newRange);
+
+        editorRef.current.focus();
+        saveDraft();
+    };
+
     const handleInlineImageChange = (e) => {
         const file = e.target.files[0];
         if (file) {
             const reader = new FileReader();
             reader.onloadend = () => {
-                const base64String = reader.result;
-                // Restore selection and insert image
-                editorRef.current.focus();
-                document.execCommand('insertImage', false, base64String);
+                insertImageAtCursor(reader.result);
             };
             reader.readAsDataURL(file);
         }
@@ -278,8 +438,63 @@ export default function CreateBlog({ theme, toggleTheme }) {
                             <button type="button" onClick={() => handleToolbar('italic')} style={toolbarBtnStyle}><i>I</i></button>
                             <button type="button" onClick={() => handleToolbar('underline')} style={toolbarBtnStyle}><u>U</u></button>
                             <div style={{ width: "1px", height: "30px", background: "rgba(255,255,255,0.2)", margin: "0 8px" }}></div>
-                            <button type="button" onClick={() => handleToolbar('formatBlock', 'H3')} style={toolbarBtnStyle}>H3</button>
-                            <button type="button" onClick={() => handleToolbar('formatBlock', 'P')} style={toolbarBtnStyle}>P</button>
+
+                            <div data-toolbar-style style={{ position: "relative", width: "120px" }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsStyleDropdownOpen(prev => !prev)}
+                                    style={{
+                                        ...toolbarBtnStyle,
+                                        width: "100%",
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                        background: "rgba(15, 23, 42, 0.8)",
+                                        color: "white",
+                                        border: "1px solid rgba(148, 163, 184, 0.4)",
+                                        minHeight: "36px"
+                                    }}
+                                >
+                                    {currentStyle}
+                                    <span style={{ marginLeft: "8px", fontSize: "0.75rem" }}>▾</span>
+                                </button>
+                                {isStyleDropdownOpen && (
+                                    <div
+                                        style={{
+                                            position: "absolute",
+                                            top: "calc(100% + 4px)",
+                                            left: 0,
+                                            width: "100%",
+                                            background: "rgba(15, 23, 42, 0.95)",
+                                            border: "1px solid rgba(148, 163, 184, 0.4)",
+                                            borderRadius: "8px",
+                                            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+                                            zIndex: 20,
+                                            overflow: "hidden"
+                                        }}
+                                    >
+                                        {['H1', 'H2', 'H3', 'Normal'].map((item) => (
+                                            <button
+                                                key={item}
+                                                type="button"
+                                                onClick={() => applyTextStyle(item)}
+                                                style={{
+                                                    width: "100%",
+                                                    padding: "8px 10px",
+                                                    border: "none",
+                                                    background: item === currentStyle ? "rgba(99, 102, 241, 0.4)" : "transparent",
+                                                    color: "white",
+                                                    textAlign: "left",
+                                                    cursor: "pointer"
+                                                }}
+                                            >
+                                                {item === 'Normal' ? 'Paragraph' : item}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
                             <button type="button" onClick={() => handleToolbar('insertUnorderedList')} style={toolbarBtnStyle}>• List</button>
                             <div style={{ width: "1px", height: "30px", background: "rgba(255,255,255,0.2)", margin: "0 8px" }}></div>
                             <input type="file" ref={inlineImageRef} accept="image/*" onChange={handleInlineImageChange} style={{ display: "none" }} />
@@ -291,7 +506,7 @@ export default function CreateBlog({ theme, toggleTheme }) {
                             ref={editorRef}
                             contentEditable
                             className="editor-content"
-                            onInput={saveDraft}
+                            onInput={() => { normalizeEditorImages(); saveDraft(); }}
                             style={{
                                 ...inputStyle,
                                 minHeight: "400px",

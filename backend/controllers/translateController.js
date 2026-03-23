@@ -1,28 +1,27 @@
-const axios = require("axios");
-const gTTS = require("gtts");
-const path = require("path");
+import axios from "axios";
+import gTTS from "gtts";
+import path from "path";
+import translateText from "../utils/translate.js";
+import { translateHtml } from "../utils/translate.js";
 
 // 🔹 TEXT TRANSLATION
-exports.translateText = async (req, res) => {
+export const translateTextController = async (req, res) => {
   try {
     const { text, targetLang } = req.body;
 
-    const response = await axios.post(
-      "https://libretranslate.de/translate",
-      {
-        q: text,
-        source: "en",
-        target: targetLang,
-        format: "text"
-      },
-      {
-        headers: { "Content-Type": "application/json" }
-      }
-    );
+    // Check if the text contains HTML tags
+    const isHtml = /<[^>]*>/.test(text);
+
+    let translated;
+    if (isHtml) {
+      translated = await translateHtml(text, targetLang);
+    } else {
+      translated = await translateText(text, targetLang);
+    }
 
     res.json({
       original: text,
-      translated: response.data.translatedText
+      translated: translated
     });
 
   } catch (error) {
@@ -31,12 +30,12 @@ exports.translateText = async (req, res) => {
 };
 
 // 🔹 TEXT TO SPEECH
-exports.textToAudio = async (req, res) => {
+export const textToAudio = async (req, res) => {
   try {
     const { text, language } = req.body;
 
     const gtts = new gTTS(text, language);
-    const filePath = path.join(__dirname, "../output.mp3");
+    const filePath = path.join(process.cwd(), "output.mp3");
 
     gtts.save(filePath, function (err) {
       if (err) {

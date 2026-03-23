@@ -1,5 +1,9 @@
 {
   "dependencies": {
-    "node-fetch": "^3.3.2"
+    "@google-cloud/text-to-speech": "^6.4.0",
+    "@google-cloud/translate": "^9.3.0",
+    "fs": "^0.0.1-security",
+    "node-fetch": "^3.3.2",
+    "util": "^0.12.5"
   }
 }

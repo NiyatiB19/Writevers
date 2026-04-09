@@ -2,12 +2,21 @@ import Post from "../models/Post.js";
 import User from "../models/User.js";
 import Notification from "../models/Notification.js";
 import ContactMessage from "../models/ContactMessage.js";
-import { categories, trending, writers } from "../data/dummyData.js";
+import { categories } from "../data/dummyData.js";
 import bcrypt from 'bcryptjs';
 import crypto from "crypto";
 import sendEmail from "../utils/sendEmail.js";
 
+const TRENDING_LIMIT = 4; // Keep in sync with the current sidebar UI
+const WRITERS_LIMIT = 3; // Keep in sync with the current sidebar UI
 
+function formatCompactNumber(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return "0";
+  if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+  if (num >= 1_000) return `${(num / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
+  return `${Math.round(num)}`;
+}
 
 // --- Data Routes ---
 
@@ -19,10 +28,11 @@ export const getHomeData = async (req, res) => {
     }).sort({ createdAt: -1 });
 
     // Personalize if userId is present
+    let currentUser = null;
     if (req.query.userId) {
-      const user = await User.findById(req.query.userId);
-      if (user && user.interests) {
-        const interestList = user.interests.split(',').map(i => i.trim().toLowerCase());
+      currentUser = await User.findById(req.query.userId);
+      if (currentUser && currentUser.interests) {
+        const interestList = currentUser.interests.split(',').map(i => i.trim().toLowerCase());
         posts = posts.filter(p => {
           const hasMatch = interestList.includes(p.category.toLowerCase());
           return hasMatch;
@@ -30,8 +40,67 @@ export const getHomeData = async (req, res) => {
       }
     }
 
+    // Trending stories: latest published stories (newest first) based on publication date.
+    // Fetches real stories from database, sorted by most recent createdAt timestamp.
+    const trendingStoriesRaw = await Post.find({
+      $or: [{ status: 'published' }, { status: { $exists: false } }]
+    })
+      .sort({ createdAt: -1 })
+      .limit(TRENDING_LIMIT)
+      .select({ _id: 1, title: 1, views: 1 })
+      .lean();
+
+    const trending = trendingStoriesRaw.map(p => ({
+      _id: p._id,
+      title: p.title,
+      views: formatCompactNumber(p.views ?? 0)
+    }));
+
+    // Writers to follow: real users excluding:
+    // - the currently logged-in user
+    // - users the current user is already following
+    let writerSuggestionsRaw = [];
+    if (currentUser) {
+      const excludedIds = [currentUser._id, ...(currentUser.following || [])];
+      writerSuggestionsRaw = await User.aggregate([
+        { $match: { _id: { $nin: excludedIds } } },
+        { $addFields: { followersCount: { $size: "$followers" } } },
+        { $sort: { followersCount: -1, createdAt: -1 } },
+        { $limit: WRITERS_LIMIT },
+        { $project: { name: 1, avatar: 1, followersCount: 1 } }
+      ]);
+    } else {
+      writerSuggestionsRaw = await User.aggregate([
+        { $addFields: { followersCount: { $size: "$followers" } } },
+        { $sort: { followersCount: -1, createdAt: -1 } },
+        { $limit: WRITERS_LIMIT },
+        { $project: { name: 1, avatar: 1, followersCount: 1 } }
+      ]);
+    }
+
+    const writers = writerSuggestionsRaw.map(u => ({
+      _id: u._id,
+      name: u.name,
+      avatar: u.avatar,
+      followers: formatCompactNumber(u.followersCount ?? 0)
+    }));
+
+    // Calculate real category post counts
+    const categoryCounts = await Post.aggregate([
+      { $match: { $or: [{ status: 'published' }, { status: { $exists: false } }] } },
+      { $group: { _id: "$category", count: { $sum: 1 } } }
+    ]);
+
+    const realCategories = categories.map(cat => {
+      const found = categoryCounts.find(c => c._id === cat.name);
+      return {
+        ...cat,
+        posts: found ? found.count : 0
+      };
+    });
+
     res.json({
-      categories,
+      categories: realCategories,
       posts,
       trending,
       writers

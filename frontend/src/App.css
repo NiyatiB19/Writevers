@@ -37,3 +37,18 @@
   }
 }
 
+.blog-content,
+.translated-html,
+.article-content {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: inherit !important;
+}
+
+.blog-content *,
+.translated-html *,
+.article-content * {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+

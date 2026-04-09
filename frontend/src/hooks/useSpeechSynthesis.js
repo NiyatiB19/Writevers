@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 
 const getBestVoiceForLanguage = (voices, langCode) => {
-  if (!voices || voices.length === 0) return null;
+  if (!voices || voices.length === 0 || !langCode) return null;
 
   const normalized = langCode.toLowerCase();
   const shortLocale = normalized.split("-")[0];
@@ -17,6 +17,18 @@ const getBestVoiceForLanguage = (voices, langCode) => {
   // If still not, any voice starting with the base
   if (!bestVoice) {
     bestVoice = voices.find(voice => voice.lang?.toLowerCase().startsWith(shortLocale + "-"));
+  }
+
+  // Fallback mapping: Gujarati -> Hindi, French -> English
+  const languageFallback = {
+    "gu-in": "hi-in",
+    "fr-fr": "en-us"
+  };
+
+  if (!bestVoice && languageFallback[normalized]) {
+    const fallbackLocale = languageFallback[normalized];
+    bestVoice = voices.find(voice => voice.lang?.toLowerCase() === fallbackLocale)
+      || voices.find(voice => voice.lang?.toLowerCase().startsWith(fallbackLocale.split("-")[0]));
   }
 
   return bestVoice || null;
@@ -49,21 +61,39 @@ export const useSpeechSynthesis = () => {
         return;
       }
 
-      // Stop any current speech
+      // Stop any current speech immediately
+      window.speechSynthesis.cancel();
       stop();
 
-      const bestVoice = getBestVoiceForLanguage(voices, langCode);
-      console.log(`Selected language: ${langCode}`);
-      console.log(`Text to speak: ${text.substring(0, 100)}...`);
-      console.log(`Best voice: ${bestVoice ? bestVoice.name : 'None'}`);
+      const normalizedLang = (langCode || "").toLowerCase();
+      let bestVoice = null;
+      let finalLang = langCode;
 
-      if (!bestVoice) {
+      if (langCode === "gu-IN") {
+          bestVoice = voices.find(v => v.lang.toLowerCase().replace('_', '-').startsWith("gu"));
+          if (!bestVoice) {
+              bestVoice = voices.find(v => v.lang.toLowerCase().replace('_', '-').startsWith("hi"));
+              finalLang = "hi-IN";
+          }
+      } else if (langCode === "fr-FR") {
+          bestVoice = voices.find(v => v.lang.toLowerCase().replace('_', '-').startsWith("fr"));
+          if (!bestVoice) {
+              bestVoice = voices.find(v => v.lang.toLowerCase().replace('_', '-').startsWith("en"));
+              finalLang = "en-US";
+          }
+      } else {
+          bestVoice = getBestVoiceForLanguage(voices, normalizedLang);
+      }
+
+      console.log("Selected voice:", bestVoice);
+
+      if (!bestVoice && langCode !== "gu-IN" && langCode !== "fr-FR") {
         reject(new Error(`No voice available for ${langCode}`));
         return;
       }
 
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = langCode;
+      utterance.lang = bestVoice ? bestVoice.lang : finalLang;
       utterance.voice = bestVoice;
 
       utterance.onstart = () => {

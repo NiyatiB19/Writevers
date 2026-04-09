@@ -2,30 +2,25 @@ import axios from "axios";
 import gTTS from "gtts";
 import path from "path";
 import translateText from "../utils/translate.js";
-import { translateHtml } from "../utils/translate.js";
 
 // 🔹 TEXT TRANSLATION
 export const translateTextController = async (req, res) => {
   try {
     const { text, targetLang } = req.body;
 
-    // Check if the text contains HTML tags
-    const isHtml = /<[^>]*>/.test(text);
-
-    let translated;
-    if (isHtml) {
-      translated = await translateHtml(text, targetLang);
-    } else {
-      translated = await translateText(text, targetLang);
+    if (!text || !targetLang) {
+      return res.status(400).json({ error: "Text and target language are required" });
     }
 
-    res.json({
-      original: text,
-      translated: translated
+    const translatedText = await translateText(text, targetLang);
+
+    return res.json({
+      translatedText: translatedText
     });
 
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("translateTextController error:", error);
+    res.status(500).json({ error: error.message || "Translation failed" });
   }
 };
 

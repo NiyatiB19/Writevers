@@ -1,7 +1,8 @@
-function LanguageSelector({ onLanguageChange, value }) {
+function LanguageSelector({ onLanguageChange, value, disabled }) {
   return (
     <select
       value={value || "en"}
+      disabled={disabled}
       onChange={(e) => onLanguageChange(e.target.value)}
       style={{
         padding: "8px 12px",
@@ -19,6 +20,7 @@ function LanguageSelector({ onLanguageChange, value }) {
       <option value="gu" style={{ color: "black" }}>Gujarati</option>
       <option value="fr" style={{ color: "black" }}>French</option>
       <option value="es" style={{ color: "black" }}>Spanish</option>
+      <option value="zh-CN" style={{ color: "black" }}>Chinese</option>
     </select>
   );
 }

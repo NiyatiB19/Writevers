@@ -42,28 +42,7 @@ export default function Footer() {
             Connect with a global audience and share your voice.
           </p>
 
-          {/* Social Icons (Simulated) */}
-          <div style={{ display: "flex", gap: "16px" }}>
-            {['Twitter', 'GitHub', 'LinkedIn', 'Instagram'].map(social => (
-              <a key={social} href="#" style={{
-                width: "40px", height: "40px", borderRadius: "12px",
-                background: "var(--bg-glass)", border: "var(--border-glass)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                color: "var(--text-main)", textDecoration: "none", fontSize: "0.9rem",
-                transition: "all 0.3s ease"
-              }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.background = "var(--bg-glass)";
-                  e.currentTarget.style.color = "var(--accent)";
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.background = "var(--bg-glass)";
-                  e.currentTarget.style.color = "var(--text-main)";
-                }}>
-                {social[0]}
-              </a>
-            ))}
-          </div>
+          {/* Social Icons (Removed) */}
         </div>
 
         {/* Quick Links */}
@@ -82,10 +61,10 @@ export default function Footer() {
           <h4 style={{ margin: "0 0 24px 0", fontSize: "1.1rem", fontWeight: "600" }}>Legal & Support</h4>
           <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "16px", color: "var(--text-muted)" }}
           >
-            <li><a href="#" style={{ color: "inherit", textDecoration: "none" }}>Privacy Policy</a></li>
-            <li><a href="#" style={{ color: "inherit", textDecoration: "none" }}>Terms of Service</a></li>
-            <li><a href="#" style={{ color: "inherit", textDecoration: "none" }}>Cookie Policy</a></li>
-            <li><a href="#" style={{ color: "inherit", textDecoration: "none" }}>Help Center</a></li>
+            <li><Link to="/privacy-policy" style={{ color: "inherit", textDecoration: "none" }}>Privacy Policy</Link></li>
+            <li><Link to="/terms-of-service" style={{ color: "inherit", textDecoration: "none" }}>Terms of Service</Link></li>
+            <li><Link to="/cookie-policy" style={{ color: "inherit", textDecoration: "none" }}>Cookie Policy</Link></li>
+            <li><Link to="/help-center" style={{ color: "inherit", textDecoration: "none" }}>Help Center</Link></li>
           </ul>
         </div>
 

@@ -11,7 +11,10 @@ import CreateBlog from "./pages/CreateBlog";
 import Admin from "./pages/Admin";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
-
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
+import CookiePolicy from "./pages/CookiePolicy";
+import HelpCenter from "./pages/HelpCenter";
 const ScrollToTopHelper = () => {
   const { useLocation } = require("react-router-dom");
   const { useEffect } = require("react");
@@ -86,6 +89,10 @@ function App() {
         <Route path="/admin" element={<AdminRoute><Admin theme={theme} toggleTheme={toggleTheme} /></AdminRoute>} />
         <Route path="/forgot-password" element={<ForgotPassword theme={theme} toggleTheme={toggleTheme} />} />
         <Route path="/reset-password/:token" element={<ResetPassword theme={theme} toggleTheme={toggleTheme} />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy theme={theme} toggleTheme={toggleTheme} />} />
+        <Route path="/terms-of-service" element={<TermsOfService theme={theme} toggleTheme={toggleTheme} />} />
+        <Route path="/cookie-policy" element={<CookiePolicy theme={theme} toggleTheme={toggleTheme} />} />
+        <Route path="/help-center" element={<HelpCenter theme={theme} toggleTheme={toggleTheme} />} />
       </Routes>
     </BrowserRouter>
   );

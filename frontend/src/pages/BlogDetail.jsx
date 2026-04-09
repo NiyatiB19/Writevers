@@ -71,9 +71,10 @@ export default function BlogDetail({ theme, toggleTheme }) {
             });
     }, [id, navigate]);
 
-    const translateBlog = async (lang) => {
-        setSelectedLang(lang);
-        
+    const translateBlog = async (selectedLanguage) => {
+        if (translating) return;
+        setSelectedLang(selectedLanguage);
+
         // Stop any ongoing speech
         stop();
         if (audioRef.current) {
@@ -81,43 +82,83 @@ export default function BlogDetail({ theme, toggleTheme }) {
             audioRef.current.currentTime = 0;
             audioRef.current = null;
         }
-        
-        if (lang === "en") {
+
+        if (!post) return;
+
+        if (selectedLanguage === "en") {
             setTranslatedContent(null);
             return;
         }
-        if (!post) return;
-        setTranslating(true);
-        
-        const rawHtml = post.content || post.excerpt || "";
 
-        if (!rawHtml.trim()) {
-            setTranslating(false);
+        const originalHTML = post.content || post.excerpt || "";
+
+        // As instructed: Extract ONLY plain text before sending
+        const cleanTextStr = originalHTML.replace(/<[^>]*>/g, "");
+        
+        // 1 & 2. Extract ONLY plain text before sending while preserving formatting structure
+        const tempDiv = document.createElement("div");
+        tempDiv.innerHTML = originalHTML;
+        const textNodes = [];
+        const walker = document.createTreeWalker(tempDiv, NodeFilter.SHOW_TEXT, null, false);
+        let node;
+        while ((node = walker.nextNode())) {
+            if (node.nodeValue.trim() !== "") {
+                textNodes.push(node);
+            }
+        }
+
+        const cleanTextArr = textNodes.map(n => n.nodeValue.trim());
+        const cleanText = cleanTextArr.join("\n\n") || cleanTextStr;
+
+        if (!cleanText.trim()) {
+            setTranslatedContent(null);
             return;
         }
+
+        setTranslating(true);
+
         try {
-            const response = await fetch(`${API_BASE}/api/translate`, {
+            // 3. Call REST API efficiently from the frontend directly
+            const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${selectedLanguage}&dt=t`;
+            const params = new URLSearchParams();
+            params.append('q', cleanText);
+
+            const response = await fetch(url, {
                 method: "POST",
                 headers: {
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/x-www-form-urlencoded"
                 },
-                body: JSON.stringify({
-                    text: rawHtml,
-                    targetLang: lang
-                })
+                body: params
             });
 
+            if (!response.ok) throw new Error("Translation API returned an error");
+            
             const data = await response.json();
+            
+            let translatedText = '';
+            if (data && data[0]) {
+                data[0].forEach(item => {
+                    if (item[0]) translatedText += item[0];
+                });
+            }
 
-            if (!response.ok) throw new Error(data.message || data.error || "Translation API returned an error");
+            // 6. IMPORTANT: Preserve formatting
+            const translatedParts = (translatedText || "").split(/\n\s*\n/);
+            textNodes.forEach((n, i) => {
+                if (translatedParts[i]) {
+                    n.nodeValue = translatedParts[i];
+                }
+            });
 
-            setTranslatedContent(data.translated);
+            // Return response immediately
+            setTranslatedContent(tempDiv.innerHTML);
 
         } catch (error) {
             console.error("Translation error:", error);
             alert("Translation failed");
+        } finally {
+            setTranslating(false);
         }
-        setTranslating(false);
     };
 
     const handleFollow = () => {
@@ -239,51 +280,13 @@ export default function BlogDetail({ theme, toggleTheme }) {
         textToRead = textToRead.trim();
 
         console.log(`Starting speech for language: ${speechLang}`);
-        console.log(`Text to speak: ${textToRead.substring(0, 100)}...`);
-
+        
         try {
-            await speak(textToRead, speechLang);
+            speak(textToRead, speechLang).catch((err) => {
+                console.warn("Speech hook returned error:", err);
+            });
         } catch (error) {
-            console.warn("Browser speech failed, using backend TTS:", error);
-            // Fallback to backend TTS
-            try {
-                if (audioRef.current) {
-                    audioRef.current.pause();
-                    audioRef.current.currentTime = 0;
-                }
-
-                const response = await fetch(`${API_BASE}/api/tts`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        text: textToRead,
-                        lang: speechLang
-                    })
-                });
-
-                if (!response.ok) throw new Error("TTS failed");
-
-                const blob = await response.blob();
-                const audioUrl = URL.createObjectURL(blob);
-                const audio = new Audio(audioUrl);
-                audioRef.current = audio;
-
-                audio.onended = () => {
-                    URL.revokeObjectURL(audioUrl);
-                    audioRef.current = null;
-                };
-                audio.onerror = () => {
-                    URL.revokeObjectURL(audioUrl);
-                    audioRef.current = null;
-                };
-
-                await audio.play();
-            } catch (backendError) {
-                console.error("Backend TTS Error:", backendError);
-                alert("TTS could not be loaded. Check backend server.");
-            }
+            console.warn("Speech failed:", error);
         }
     };
 
@@ -496,7 +499,7 @@ export default function BlogDetail({ theme, toggleTheme }) {
                     <div className="blog-content" style={{ lineHeight: "1.8", fontSize: "1.2rem", color: "var(--text-main)" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
                             <span style={{ color: "var(--text-muted)", fontSize: "0.95rem" }}>Translate:</span>
-                            <LanguageSelector value={selectedLang} onLanguageChange={translateBlog} />
+                            <LanguageSelector value={selectedLang} onLanguageChange={translateBlog} disabled={translating} />
                             {translating && <span style={{ color: "var(--accent)", fontSize: "0.85rem" }}>Translating...</span>}
                         </div>
                         {translatedContent !== null ? (

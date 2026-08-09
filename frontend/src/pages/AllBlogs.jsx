@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { homeApiUrl } from "../utils/api";
 
 export default function AllBlogs({ theme, toggleTheme }) {
     const [posts, setPosts] = useState([]);
@@ -10,7 +11,7 @@ export default function AllBlogs({ theme, toggleTheme }) {
     const searchQuery = searchParams.get("search");
 
     useEffect(() => {
-        fetch("http://localhost:5001/api/home")
+        fetch(homeApiUrl())
             .then(res => res.json())
             .then(data => {
                 let allPosts = data.posts;

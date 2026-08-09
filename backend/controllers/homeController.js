@@ -716,8 +716,18 @@ export const replyToContactMessage = async (req, res) => {
     );
     if (!msg) return res.status(404).json({ message: "Message not found" });
 
-    // Simulate sending email
-    console.log(`[EMAIL SIMULATION] Replying to ${msg.email} with: ${reply}`);
+    // Send actual email reply to the user
+    try {
+      await sendEmail(
+        msg.email,
+        `Re: ${msg.subject}`,
+        `<p>Hello ${msg.name},</p><p>${reply}</p><br/><p>Best regards,<br/>WriteVerse Admin</p>`
+      );
+    } catch (emailError) {
+      console.error("Failed to send email:", emailError);
+      // We can continue even if the email fails, or we could return an error.
+      // Assuming we want to continue and just create the in-app notification.
+    }
 
     // Create notification for the user (if they are a registered user, we'd need to find them by email)
     const user = await User.findOne({ email: msg.email });

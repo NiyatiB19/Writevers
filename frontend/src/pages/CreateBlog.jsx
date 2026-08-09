@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { homeApiUrl } from "../utils/api";
 
 export default function CreateBlog({ theme, toggleTheme }) {
     const [formData, setFormData] = useState({
@@ -65,7 +66,7 @@ export default function CreateBlog({ theme, toggleTheme }) {
         }
 
         if (isEditing) {
-            fetch(`http://localhost:5001/api/home/posts/${id}`)
+            fetch(homeApiUrl(`/posts/${id}`))
                 .then(res => res.json())
                 .then(data => {
                     setFormData({
@@ -159,10 +160,9 @@ export default function CreateBlog({ theme, toggleTheme }) {
         }
 
         const content = editorRef.current ? editorRef.current.innerHTML : "";
-        const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5001/api/home";
         const url = isEditing
-            ? `${API_BASE}/posts/${id}`
-            : `${API_BASE}/posts`;
+            ? homeApiUrl(`/posts/${id}`)
+            : homeApiUrl("/posts");
         const method = isEditing ? "PUT" : "POST";
 
         fetch(url, {
@@ -248,9 +248,10 @@ export default function CreateBlog({ theme, toggleTheme }) {
             }
         };
 
+        const editor = editorRef.current;
         document.addEventListener("selectionchange", onSelectionChange);
         document.addEventListener("click", onEditorClick);
-        editorRef.current?.addEventListener("focus", updateCurrentTextStyle);
+        editor?.addEventListener("focus", updateCurrentTextStyle);
 
         // Normalize existing image nodes on mount
         normalizeEditorImages();
@@ -258,8 +259,9 @@ export default function CreateBlog({ theme, toggleTheme }) {
         return () => {
             document.removeEventListener("selectionchange", onSelectionChange);
             document.removeEventListener("click", onEditorClick);
-            editorRef.current?.removeEventListener("focus", updateCurrentTextStyle);
+            editor?.removeEventListener("focus", updateCurrentTextStyle);
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {

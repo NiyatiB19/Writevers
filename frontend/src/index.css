@@ -140,3 +140,79 @@ code {
   background: var(--bg-glass);
   transform: scale(1.05);
 }
+
+/* Mobile Compatibility */
+@media (max-width: 768px) {
+  /* Navbar */
+  nav {
+    flex-direction: column !important;
+    gap: 15px !important;
+    padding: 15px !important;
+    position: static !important;
+    align-items: center !important;
+  }
+  
+  nav > ul {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 15px !important;
+    width: 100%;
+  }
+  
+  nav > div {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 15px !important;
+    width: 100%;
+  }
+
+  body, .container {
+    padding-top: 0 !important;
+  }
+  
+  #hero {
+    padding-top: 20px !important;
+  }
+  
+  #hero h1 {
+    font-size: 2.5rem !important; /* Fix oversized text on mobile */
+  }
+
+  .container {
+    padding-left: 15px !important;
+    padding-right: 15px !important;
+  }
+  
+  /* Robust Mobile Rows -> Columns */
+  .mobile-col {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 20px !important;
+  }
+  
+  .mobile-col > div {
+    flex: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Form inputs */
+  input[type="text"], input[type="email"], input[type="password"] {
+    box-sizing: border-box !important;
+    max-width: 100%;
+    width: 100% !important;
+  }
+  
+  /* Images */
+  img:not(.app-logo) {
+    max-width: 100%;
+    height: auto;
+  }
+  
+  /* Sidebar */
+  aside {
+    flex: auto !important;
+    width: 100% !important;
+    position: static !important;
+  }
+}

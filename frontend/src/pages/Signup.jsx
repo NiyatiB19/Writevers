@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { homeApiUrl } from "../utils/api";
 
 export default function Signup({ theme, toggleTheme }) {
     const [formData, setFormData] = useState({
@@ -21,7 +22,7 @@ export default function Signup({ theme, toggleTheme }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        fetch("http://localhost:5001/api/home/signup", {
+        fetch(homeApiUrl("/signup"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ ...formData, email: formData.email.trim() })
@@ -29,8 +30,7 @@ export default function Signup({ theme, toggleTheme }) {
             .then(res => res.json())
             .then(data => {
                 if (data.message === "User created successfully") {
-                    alert("Account created! Please login.");
-                    navigate("/login");
+                    navigate("/");
                 } else {
                     alert(data.message);
                 }
@@ -54,7 +54,19 @@ export default function Signup({ theme, toggleTheme }) {
     return (
         <>
             <Navbar theme={theme} toggleTheme={toggleTheme} />
-            <div className="container" style={{ paddingTop: "120px", paddingBottom: "60px", maxWidth: "600px" }}>
+            <div style={{
+                minHeight: "100vh",
+                paddingTop: "120px",
+                paddingBottom: "60px",
+                backgroundImage: "url('/bg.jpg')",
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                backgroundRepeat: "no-repeat",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center"
+            }}>
+                <div className="container" style={{ maxWidth: "600px", margin: 0 }}>
                 <div className="glass" style={{ padding: "40px", borderRadius: "20px" }}>
                     <h2 className="text-gradient" style={{ fontSize: "2rem", marginBottom: "30px", textAlign: "center" }}>Create Account</h2>
 
@@ -69,6 +81,7 @@ export default function Signup({ theme, toggleTheme }) {
 
                         <button type="submit" className="btn-primary" style={{ marginTop: "10px" }}>Sign Up</button>
                     </form>
+                </div>
                 </div>
             </div>
             <Footer />

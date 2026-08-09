@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { homeApiUrl } from "../utils/api";
 
 export default function Login({ theme, toggleTheme }) {
     const [email, setEmail] = useState("");
@@ -14,7 +15,7 @@ export default function Login({ theme, toggleTheme }) {
         e.preventDefault();
         setError("");
 
-        fetch("http://localhost:5001/api/home/login", {
+        fetch(homeApiUrl("/login"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email: email.trim(), password })
@@ -43,9 +44,14 @@ export default function Login({ theme, toggleTheme }) {
             <div style={{
                 minHeight: "100vh",
                 display: "flex",
-                justifyContent: "center",
+                justifyContent: "flex-start",
                 alignItems: "center",
-                paddingtop: "80px"
+                paddingTop: "80px",
+                paddingLeft: "10%",
+                backgroundImage: "url('/bg.jpg')",
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                backgroundRepeat: "no-repeat"
             }}>
                 <div className="glass" style={{
                     padding: "40px",

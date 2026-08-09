@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import logo from "../assets/logo_icon.png";
+import { homeApiUrl } from "../utils/api";
 
 
 export default function Navbar({ theme, toggleTheme }) {
@@ -10,7 +11,7 @@ export default function Navbar({ theme, toggleTheme }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
-  useLocation(); // Hook to trigger re-render on route change
+  const location = useLocation(); // Hook to trigger re-render on route change
 
   useEffect(() => {
     const handleScroll = () => {
@@ -25,7 +26,7 @@ export default function Navbar({ theme, toggleTheme }) {
     if (userStr) {
       const user = JSON.parse(userStr);
       setIsAdmin(user.isAdmin || false);
-      fetch(`http://localhost:5001/api/home/notifications/${user._id}`)
+      fetch(homeApiUrl(`/notifications/${user._id}`))
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data)) {
@@ -35,16 +36,16 @@ export default function Navbar({ theme, toggleTheme }) {
         })
         .catch(err => console.error("Failed to load notifications", err));
     }
-  }, [useLocation().key]); // Re-fetch on nav change
+  }, [location.key]); // Re-fetch on nav change
 
   const markRead = (id) => {
-    fetch(`http://localhost:5001/api/home/notifications/${id}/read`, { method: 'PUT' });
+    fetch(homeApiUrl(`/notifications/${id}/read`), { method: 'PUT' });
     setNotifications(prev => prev.map(n => n._id === id ? { ...n, read: true } : n));
     setUnreadCount(prev => Math.max(0, prev - 1));
   };
 
   const removeNotification = (id) => {
-    fetch(`http://localhost:5001/api/home/notifications/${id}`, { method: 'DELETE' })
+    fetch(homeApiUrl(`/notifications/${id}`), { method: 'DELETE' })
       .then(res => {
          if (res.ok) {
             setNotifications(prev => prev.filter(n => n._id !== id));
@@ -263,4 +264,3 @@ export default function Navbar({ theme, toggleTheme }) {
     </nav>
   );
 }
-

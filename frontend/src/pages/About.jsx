@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { homeApiUrl } from "../utils/api";
 
-const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5001/api/home";
+const API_BASE = homeApiUrl();
 
 export default function About({ theme, toggleTheme }) {
     const [contactForm, setContactForm] = useState({ name: "", email: "", subject: "", message: "" });

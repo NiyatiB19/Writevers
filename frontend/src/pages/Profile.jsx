@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { homeApiUrl } from "../utils/api";
 
 export default function Profile({ theme, toggleTheme }) {
     const [user, setUser] = useState(null);
@@ -27,7 +28,7 @@ export default function Profile({ theme, toggleTheme }) {
             });
 
             // Fetch fresh user data (for stats)
-            fetch(`http://localhost:5001/api/home/profile?id=${parsedUser._id}`)
+            fetch(homeApiUrl(`/profile?id=${parsedUser._id}`))
                 .then(res => res.json())
                 .then(data => {
                     // Merge with local storage to keep token but update details
@@ -38,14 +39,13 @@ export default function Profile({ theme, toggleTheme }) {
                 .catch(err => console.error("Failed to refresh profile", err));
 
             // Fetch Notifications (Disabled)
-            // fetch(`http://localhost:5001/api/home/notifications/${parsedUser._id}`)
+            // fetch(homeApiUrl(`/notifications/${parsedUser._id}`))
             //     .then(res => res.json())
             //     .then(data => setNotifications(data))
             //     .catch(err => console.error("Failed to load notifications", err));
 
             // Fetch my posts (all statuses: pending, published, rejected)
-            const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5001/api/home";
-            fetch(`${API_BASE}/my-posts?userId=${parsedUser._id}`)
+            fetch(homeApiUrl(`/my-posts?userId=${parsedUser._id}`))
                 .then(res => res.json())
                 .then(data => {
                     setMyPosts(Array.isArray(data) ? data : []);
@@ -86,7 +86,7 @@ export default function Profile({ theme, toggleTheme }) {
         setUser(updatedUser);
         localStorage.setItem("user", JSON.stringify(updatedUser));
 
-        fetch("http://localhost:5001/api/home/profile", {
+        fetch(homeApiUrl("/profile"), {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id: user._id || user.id, avatar: newImage })
@@ -102,7 +102,7 @@ export default function Profile({ theme, toggleTheme }) {
         setUser(updatedUser);
         localStorage.setItem("user", JSON.stringify(updatedUser));
 
-        fetch("http://localhost:5001/api/home/profile", {
+        fetch(homeApiUrl("/profile"), {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id: user._id || user.id, ...editFormData })
@@ -267,7 +267,7 @@ export default function Profile({ theme, toggleTheme }) {
                                         <button
                                             onClick={() => {
                                                 if (window.confirm("Are you sure you want to delete this post?")) {
-                                                    fetch(`http://localhost:5001/api/home/posts/${post._id}`, { method: "DELETE" })
+                                                    fetch(homeApiUrl(`/posts/${post._id}`), { method: "DELETE" })
                                                         .then(res => {
                                                             if (res.ok) {
                                                                 setMyPosts(myPosts.filter(p => p._id !== post._id));

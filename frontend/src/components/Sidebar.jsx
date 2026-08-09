@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-
-const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5001";
+import { homeApiUrl } from "../utils/api";
 
 export default function Sidebar({ trending, writers }) {
   const navigate = useNavigate();
@@ -75,7 +74,7 @@ export default function Sidebar({ trending, writers }) {
 
     setPendingFollowId(targetUserId);
     try {
-      const res = await fetch(`${API_BASE}/api/home/follow`, {
+      const res = await fetch(homeApiUrl("/follow"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ currentUserId, targetUserId })

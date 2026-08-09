@@ -1,9 +1,29 @@
 {
+  "name": "writeverse",
+  "version": "1.0.0",
+  "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build"
+  },
   "dependencies": {
     "@google-cloud/text-to-speech": "^6.4.0",
     "@google-cloud/translate": "^9.3.0",
+    "@vitalets/google-translate-api": "^9.2.1",
+    "axios": "^1.13.6",
+    "bcryptjs": "^3.0.3",
+    "cheerio": "^1.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^4.18.2",
     "fs": "^0.0.1-security",
+    "google-translate-api-x": "^10.7.2",
+    "gtts": "^0.2.1",
+    "mongoose": "^9.1.5",
     "node-fetch": "^3.3.2",
+    "nodemailer": "^8.0.1",
     "util": "^0.12.5"
   }
 }

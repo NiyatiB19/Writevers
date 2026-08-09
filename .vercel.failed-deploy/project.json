@@ -1,0 +1,16 @@
+{
+  "projectId": "prj_8Mh25E7QVgURsfT5AHeZaVoX5ocI",
+  "orgId": "team_5EMqFX7isOJktaY7P8HScoSQ",
+  "projectName": "writeverse",
+  "settings": {
+    "createdAt": 1777641134390,
+    "framework": null,
+    "devCommand": null,
+    "installCommand": null,
+    "buildCommand": null,
+    "outputDirectory": null,
+    "rootDirectory": null,
+    "directoryListing": false,
+    "nodeVersion": "24.x"
+  }
+}

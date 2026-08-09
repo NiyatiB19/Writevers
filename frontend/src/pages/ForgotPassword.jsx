@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { homeApiUrl } from "../utils/api";
 
 export default function ForgotPassword({ theme, toggleTheme }) {
     const [email, setEmail] = useState("");
@@ -12,7 +13,7 @@ export default function ForgotPassword({ theme, toggleTheme }) {
         setMessage("");
         setError("");
 
-        fetch("http://localhost:5001/api/home/forgot-password", {
+        fetch(homeApiUrl("/forgot-password"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email: email.trim() }),

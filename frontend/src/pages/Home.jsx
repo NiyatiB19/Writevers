@@ -5,6 +5,7 @@ import Categories from "../components/Categories";
 import Feed from "../components/Feed";
 import Sidebar from "../components/Sidebar";
 import Footer from "../components/Footer";
+import { homeApiUrl } from "../utils/api";
 
 export default function Home({ theme, toggleTheme }) {
   const [data, setData] = useState(null);
@@ -12,7 +13,7 @@ export default function Home({ theme, toggleTheme }) {
 
   useEffect(() => {
     const userStr = localStorage.getItem("user");
-    let url = "http://localhost:5001/api/home";
+    let url = homeApiUrl();
     if (userStr) {
       try {
         const user = JSON.parse(userStr);
@@ -69,7 +70,7 @@ export default function Home({ theme, toggleTheme }) {
       <Hero />
       <Categories categories={data.categories} />
 
-      <div className="container" style={{ display: "flex", gap: "40px", marginBottom: "30px", alignItems: "center" }}>
+      <div className="container mobile-col" style={{ display: "flex", gap: "40px", marginBottom: "30px", alignItems: "center" }}>
         <div style={{ flex: "1", minWidth: "0" }}>
           <h3 style={{ fontSize: "1.5rem", margin: 0 }}>Latest Read</h3>
         </div>
@@ -78,7 +79,7 @@ export default function Home({ theme, toggleTheme }) {
         </div>
       </div>
 
-      <div className="container" style={{
+      <div className="container mobile-col" style={{
         display: "flex",
         gap: "40px",
         paddingBottom: "60px",

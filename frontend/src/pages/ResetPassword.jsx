@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { homeApiUrl } from "../utils/api";
 
 export default function ResetPassword({ theme, toggleTheme }) {
     const { token } = useParams();
@@ -15,7 +16,7 @@ export default function ResetPassword({ theme, toggleTheme }) {
         setMessage("");
         setError("");
 
-        fetch("http://localhost:5001/api/home/reset-password", {
+        fetch(homeApiUrl("/reset-password"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ token, newPassword }),

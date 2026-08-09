@@ -2,8 +2,9 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { homeApiUrl } from "../utils/api";
 
-const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5001/api/home";
+const API_BASE = homeApiUrl();
 
 const adminNav = [
   { id: "all-blogs", label: "All Blogs", icon: "📝" },
@@ -124,6 +125,7 @@ export default function Admin({ theme, toggleTheme }) {
     if (activeTab === "contact") fetchContact();
     if (activeTab === "reported") fetchReported();
     if (activeTab === "users") fetchUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, statusFilter]);
 
   const handleUpdateStatus = (postId, status) => {
@@ -224,14 +226,6 @@ export default function Admin({ theme, toggleTheme }) {
   };
 
   const getStatusBadge = (status) => {
-    const colors = {
-      published: "bg-green-500/20 text-green-400",
-      pending: "bg-yellow-500/20 text-yellow-400",
-      rejected: "bg-red-500/20 text-red-400",
-      onhold: "bg-orange-500/20 text-orange-400"
-    };
-    const styleClass = colors[status?.toLowerCase()] || "bg-gray-500/20 text-gray-400";
-
     // Since we are using inline styles mostly, we'll map to inline styles roughly
     let style = { padding: "4px 10px", borderRadius: "20px", fontSize: "0.8rem", fontWeight: "600", textTransform: "capitalize" };
     if (status === 'published') style = { ...style, background: "rgba(34, 197, 94, 0.2)", color: "#4ade80" };

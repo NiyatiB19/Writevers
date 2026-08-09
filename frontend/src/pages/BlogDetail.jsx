@@ -5,8 +5,7 @@ import Footer from "../components/Footer";
 import LanguageSelector from "../components/LanguageSelector";
 import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
 import { languageOptions } from '../utils/languageOptions';
-
-const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5001";
+import { homeApiUrl } from "../utils/api";
 
 export default function BlogDetail({ theme, toggleTheme }) {
     const { id } = useParams();
@@ -28,7 +27,7 @@ export default function BlogDetail({ theme, toggleTheme }) {
     const [replyText, setReplyText] = useState("");
 
     const [speechLang, setSpeechLang] = useState("en-US");
-    const { speak, pause, resume, stop, isSpeaking, isPaused, hasVoiceForLanguage } = useSpeechSynthesis();
+    const { speak, resume, stop, isSpeaking, isPaused } = useSpeechSynthesis();
     const navigate = useNavigate();
     const audioRef = React.useRef(null);
 
@@ -39,7 +38,7 @@ export default function BlogDetail({ theme, toggleTheme }) {
 
         const userStr = localStorage.getItem("user");
         const userId = userStr ? (() => { try { return JSON.parse(userStr)._id; } catch { return null; } })() : null;
-        const url = userId ? `${API_BASE}/api/home/posts/${id}?userId=${userId}` : `${API_BASE}/api/home/posts/${id}`;
+        const url = userId ? homeApiUrl(`/posts/${id}?userId=${userId}`) : homeApiUrl(`/posts/${id}`);
         fetch(url)
             .then(res => {
                 if (!res.ok) throw new Error("Post not found");
@@ -170,7 +169,7 @@ export default function BlogDetail({ theme, toggleTheme }) {
         const wasFollowing = isFollowing;
         setIsFollowing(!wasFollowing);
 
-        fetch(`${API_BASE}/api/home/follow`, {
+        fetch(homeApiUrl("/follow"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ currentUserId: user._id, targetUserId: post.authorId })
@@ -201,7 +200,7 @@ export default function BlogDetail({ theme, toggleTheme }) {
         const reason = prompt("Why are you reporting this post?");
         if (!reason) return;
 
-        fetch(`${API_BASE}/api/home/posts/${id}/report`, {
+        fetch(homeApiUrl(`/posts/${id}/report`), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ userId: user._id, reason })
@@ -223,7 +222,7 @@ export default function BlogDetail({ theme, toggleTheme }) {
         setIsLiked(!wasLiked);
         setLikes(prev => wasLiked ? prev - 1 : prev + 1);
 
-        fetch(`${API_BASE}/api/home/posts/${id}/like`, {
+        fetch(homeApiUrl(`/posts/${id}/like`), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ userId: user._id })
@@ -306,7 +305,7 @@ export default function BlogDetail({ theme, toggleTheme }) {
         setComments([...comments, tempComment]);
         setNewComment("");
 
-        fetch(`${API_BASE}/api/home/posts/${id}/comments`, {
+        fetch(homeApiUrl(`/posts/${id}/comments`), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(commentPayload)
@@ -329,7 +328,7 @@ export default function BlogDetail({ theme, toggleTheme }) {
             text: replyText
         };
 
-        fetch(`${API_BASE}/api/home/posts/${id}/comments/${commentId}/reply`, {
+        fetch(homeApiUrl(`/posts/${id}/comments/${commentId}/reply`), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(replyPayload)
@@ -424,7 +423,7 @@ export default function BlogDetail({ theme, toggleTheme }) {
                                 <button
                                     onClick={() => {
                                         if (window.confirm("Are you sure you want to delete this post?")) {
-                                            fetch(`${API_BASE}/api/home/posts/${post._id}`, { method: "DELETE" })
+                                            fetch(homeApiUrl(`/posts/${post._id}`), { method: "DELETE" })
                                                 .then(res => {
                                                     if (res.ok) {
                                                         alert("Post deleted successfully");

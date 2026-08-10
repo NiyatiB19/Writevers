@@ -376,7 +376,7 @@ export default function BlogDetail({ theme, toggleTheme }) {
                 <div className="container" style={{ maxWidth: "1100px", marginTop: "40px" }}>
 
                     {/* Author & Meta */}
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "40px", borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: "20px" }}>
+                    <div className="mobile-col" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "40px", borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: "20px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
                             <img src={post.authorAvatar} alt={post.author} style={{ width: "50px", height: "50px", borderRadius: "50%" }} />
                             <div>
@@ -446,7 +446,7 @@ export default function BlogDetail({ theme, toggleTheme }) {
                             )}
 
                             {/* Listen Section */}
-                            <div style={{ display: "flex", gap: "10px", alignItems: "center", background: "var(--bg-glass)", border: "var(--border-glass)", padding: "4px 12px 4px 4px", borderRadius: "30px" }}>
+                            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center", background: "var(--bg-glass)", border: "var(--border-glass)", padding: "4px 12px 4px 4px", borderRadius: "30px" }}>
                                 <button onClick={startStopSpeech} style={{
                                     background: isSpeaking ? "rgba(34,197,94,0.2)" : "transparent",
                                     border: "none",

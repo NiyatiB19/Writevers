@@ -196,6 +196,10 @@ code {
     max-width: 100% !important;
   }
 
+  .mobile-grid-col {
+    grid-template-columns: 1fr !important;
+  }
+
   /* Form inputs */
   input[type="text"], input[type="email"], input[type="password"] {
     box-sizing: border-box !important;

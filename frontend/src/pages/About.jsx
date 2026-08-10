@@ -71,7 +71,7 @@ export default function About({ theme, toggleTheme }) {
 
                 <div className="glass" style={{ padding: "40px", borderRadius: "24px", marginTop: "60px" }}>
                     <h3 style={{ fontSize: "2rem", marginBottom: "30px", textAlign: "center" }}>Get in Touch</h3>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "40px" }}>
+                    <div className="mobile-grid-col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "40px" }}>
                         <div>
                             <h4 style={{ fontSize: "1.2rem", marginBottom: "16px" }}>Contact Information</h4>
                             <p style={{ color: "var(--text-muted)", marginBottom: "8px" }}>Have questions? We'd love to hear from you.</p>
@@ -94,7 +94,7 @@ export default function About({ theme, toggleTheme }) {
                             {sent && (
                                 <p style={{ color: "var(--accent)", margin: 0, fontSize: "0.95rem" }}>Message sent! We'll get back to you shortly.</p>
                             )}
-                            <div style={{ display: "flex", gap: "16px" }}>
+                            <div className="mobile-col" style={{ display: "flex", gap: "16px" }}>
                                 <input required placeholder="Name" value={contactForm.name} onChange={e => setContactForm({ ...contactForm, name: e.target.value })} style={{ flex: 1, padding: "12px", borderRadius: "8px", background: "var(--bg-glass)", border: "var(--border-glass)", color: "var(--text-main)", outline: "none" }} />
                                 <input required type="email" placeholder="Email" value={contactForm.email} onChange={e => setContactForm({ ...contactForm, email: e.target.value })} style={{ flex: 1, padding: "12px", borderRadius: "8px", background: "var(--bg-glass)", border: "var(--border-glass)", color: "var(--text-main)", outline: "none" }} />
                             </div>

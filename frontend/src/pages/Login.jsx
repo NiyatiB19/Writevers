@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { homeApiUrl } from "../utils/api";
+import bgImage from "../assets/bg.jpg";
 
 export default function Login({ theme, toggleTheme }) {
     const [email, setEmail] = useState("");
@@ -48,7 +49,7 @@ export default function Login({ theme, toggleTheme }) {
                 alignItems: "center",
                 paddingTop: "80px",
                 paddingLeft: "10%",
-                backgroundImage: "url('/bg.jpg')",
+                backgroundImage: `url(${bgImage})`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
                 backgroundRepeat: "no-repeat"

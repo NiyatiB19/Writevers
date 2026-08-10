@@ -38,7 +38,7 @@ export default function AllBlogs({ theme, toggleTheme }) {
         <>
             <Navbar theme={theme} toggleTheme={toggleTheme} />
             <div className="container" style={{ paddingTop: "120px", paddingBottom: "60px", minHeight: "100vh" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "40px" }}>
+                <div className="mobile-col" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "40px" }}>
                     <h2 style={{ fontSize: "2.5rem" }}>
                         {searchQuery
                             ? `Search Results for "${searchQuery}"`

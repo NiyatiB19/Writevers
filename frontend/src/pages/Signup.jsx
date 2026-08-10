@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { homeApiUrl } from "../utils/api";
+import bgImage from "../assets/bg.jpg";
 
 export default function Signup({ theme, toggleTheme }) {
     const [formData, setFormData] = useState({
@@ -58,7 +59,7 @@ export default function Signup({ theme, toggleTheme }) {
                 minHeight: "100vh",
                 paddingTop: "120px",
                 paddingBottom: "60px",
-                backgroundImage: "url('/bg.jpg')",
+                backgroundImage: `url(${bgImage})`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
                 backgroundRepeat: "no-repeat",
